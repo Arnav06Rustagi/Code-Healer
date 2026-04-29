@@ -2,9 +2,9 @@
 
 **Instant AI-powered code reviews for 27+ programming languages.**
 
-Paste your code, click review, and get a structured analysis from a senior-developer AI — complete with bug reports, security warnings, performance tips, and a fully corrected version of your file.
+Paste your code, click review, and get a structured analysis from a senior-developer AI — complete with bug reports, security warnings, performance tips, and a fully corrected version of your file. Every review is automatically saved to **IBM Cloudant** so your history persists across sessions.
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi) ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?logo=google) ![License](https://img.shields.io/badge/license-MIT-purple)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi) ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?logo=google) ![Cloudant](https://img.shields.io/badge/IBM-Cloudant-054ADA?logo=ibm) ![License](https://img.shields.io/badge/license-MIT-purple)
 
 ---
 
@@ -12,57 +12,12 @@ Paste your code, click review, and get a structured analysis from a senior-devel
 
 - **Zero setup for users** — paste code, click review, done
 - **27+ languages** — Python, JS, TypeScript, Java, Rust, Go, C++, SQL, and more
-- **Structured output** — issues are categorized by severity (critical / warning / info)
+- **Structured output** — issues categorized by severity (critical / warning / info)
 - **Line-level precision** — every issue includes the exact line number
 - **One-click fix** — get the complete corrected file, not just snippets
 - **Drag & drop upload** — drop any text file directly onto the editor
-- **Model fallback chain** — automatically falls back from Gemini 2.5 Flash → 2.0 Flash if quota is hit
-
----
-
-## 🖥️ Demo
-
-```
-Paste code → Select language → Run Review → Copy fixed code
-```
-
-The AI returns a JSON-structured review with:
-
-| Field | Description |
-|-------|-------------|
-| `score` | 1–10 quality rating |
-| `summary` | High-level assessment |
-| `issues` | Bugs, security holes, style problems — with line numbers |
-| `suggestions` | Prioritized improvement recommendations |
-| `fixed_code` | Complete corrected version of your file |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free tier available)
-
-### Installation
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/code-healer.git
-cd code-healer
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Configure your API key
-echo "GEMINI_API_KEY=your_key_here" > .env
-
-# 4. Start the server
-uvicorn main:app --reload --port 8000
-```
-
-Then open **http://localhost:8000** in your browser.
+- **Persistent review history** — every review saved to IBM Cloudant with full CRUD API
+- **Model fallback chain** — auto-falls back from Gemini 2.5 Flash → 2.0 Flash on quota errors
 
 ---
 
@@ -77,26 +32,73 @@ Browser (HTML/CSS/JS)
             │
             ├── Gemini 2.5 Flash  ──┐
             └── Gemini 2.0 Flash  ──┴──► Structured JSON response
+                                              │
+                                    IBM Cloudant (history DB)
 ```
 
 **Stack:**
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | FastAPI 0.115 + Uvicorn |
-| AI | Google Gemini 2.5 Flash (via `google-genai` SDK) |
-| Frontend | Vanilla HTML/CSS/JS (no build step) |
+| Backend | FastAPI 0.115 + Uvicorn 0.34 |
+| AI | Google Gemini 2.5 Flash (`google-genai` SDK) |
+| Database | IBM Cloudant (`ibmcloudant` SDK) |
+| Frontend | Vanilla HTML/CSS/JS — no build step |
 | Config | python-dotenv |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free tier available)
+- *(Optional)* An [IBM Cloudant](https://www.ibm.com/cloud/cloudant) instance for persistent review history
+
+### Installation
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/Arnav06Rustagi/Code-Healer.git
+cd Code-Healer
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Configure environment variables (see below)
+
+# 4. Start the server
+uvicorn main:app --reload --port 8000
+```
+
+Open **http://localhost:8000** in your browser.
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Required — AI review engine
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional — persistent review history
+CLOUDANT_URL=https://your-instance.cloudant.com
+CLOUDANT_APIKEY=your_cloudant_iam_api_key
+CLOUDANT_DB=code_healer_history        # optional, this is the default
+```
+
+> Cloudant is **optional**. The app works fully without it — reviews just won't persist between sessions. When configured, Code Healer auto-creates the database on first run.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-code-healer/
-├── main.py              # FastAPI server + Gemini integration + AI prompt
-├── requirements.txt     # Python dependencies
-├── .env                 # API key (not committed)
+Code-Healer/
+├── main.py              # FastAPI server, Gemini integration, Cloudant history
+├── requirements.txt     # Python dependencies (5 packages)
+├── .gitignore
 └── static/
     ├── index.html       # Page structure
     ├── styles.css       # Glassmorphism design system
@@ -109,9 +111,9 @@ code-healer/
 
 ### `POST /api/review`
 
-Submit code for review.
+Submit code for AI review. On success, the review is automatically saved to Cloudant history.
 
-**Request body:**
+**Request:**
 ```json
 {
   "code": "def add(a, b):\n    return a + b",
@@ -142,9 +144,88 @@ Submit code for review.
 }
 ```
 
+---
+
+### `GET /api/history`
+
+Returns the 30 most recent reviews from Cloudant, sorted newest first.
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "_id": "uuid",
+      "language": "python",
+      "score": 8,
+      "preview": "def add(a, b):  return a + b",
+      "summary": "Clean, simple function...",
+      "created_at": "2026-04-29T12:00:00+00:00"
+    }
+  ]
+}
+```
+
+Returns `{"items": []}` silently if Cloudant is not configured.
+
+---
+
+### `GET /api/history/{doc_id}`
+
+Retrieve a full review record by its Cloudant document ID — includes the complete original `code` and full `review` object.
+
+---
+
+### `DELETE /api/history/{doc_id}`
+
+Delete a single review from Cloudant history.
+
+**Response:** `{"status": "deleted"}`
+
+---
+
+### `DELETE /api/history`
+
+Clear the entire review history from Cloudant.
+
+**Response:** `{"status": "cleared"}`
+
+---
+
 ### `GET /api/health`
 
-Returns server status and whether the Gemini API key is configured.
+Returns server and integration status.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "gemini_configured": true,
+  "cloudant_configured": true
+}
+```
+
+---
+
+## 🗄️ IBM Cloudant — Review History
+
+Each review is stored as a JSON document in Cloudant with this shape:
+
+```json
+{
+  "_id": "uuid-v4",
+  "type": "review",
+  "code": "original source code",
+  "language": "python",
+  "score": 8,
+  "summary": "High-level assessment",
+  "review": { /* full review object */ },
+  "preview": "first 80 chars of code, newlines stripped",
+  "created_at": "2026-04-29T12:00:00+00:00"
+}
+```
+
+**Graceful degradation:** if Cloudant credentials are absent, the app starts normally — all history endpoints return empty/503 responses, and code review continues to work without any impact.
 
 ---
 
@@ -156,35 +237,34 @@ Python · JavaScript · TypeScript · Java · C · C++ · C# · Go · Rust · PH
 
 ## 🔒 Security Notes
 
-- The Gemini API key is stored server-side in `.env` and never exposed to the browser
-- All AI output is HTML-escaped before rendering (XSS protection)
-- Input validation rejects empty submissions with a `400` response
-- **For production:** restrict CORS origins, add rate limiting per IP, and consider authentication to prevent quota abuse
+- Gemini API key and Cloudant credentials live in `.env` — never sent to the browser
+- All AI output is HTML-escaped before DOM insertion (XSS protection)
+- Empty code submissions are rejected with `HTTP 400`
+- Cloudant authenticates via IBM IAM using the official SDK
+- **For production:** restrict CORS origins from `*`, add per-IP rate limiting, and consider authentication to prevent quota abuse
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Review history with localStorage
-- [ ] Streaming responses (SSE) for real-time output
-- [ ] Diff view — side-by-side original vs fixed
+- [ ] Streaming responses (SSE) for real-time review output
+- [ ] Diff view — side-by-side original vs fixed code
 - [ ] Dark / light theme toggle
 - [ ] Multi-file upload (zip)
-- [ ] GitHub integration — review pull requests directly
-- [ ] Shareable review links
-- [ ] User accounts + saved review history
+- [ ] GitHub PR integration
+- [ ] Shareable review links via Cloudant document IDs
+- [ ] User accounts tied to Cloudant history
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
+Pull requests are welcome. For major changes, open an issue first.
 
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Commit your changes (`git commit -m 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
+4. Push and open a Pull Request
 
 ---
 
@@ -194,4 +274,4 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 ---
 
-Built with [FastAPI](https://fastapi.tiangolo.com/) and [Google Gemini](https://deepmind.google/technologies/gemini/).
+Built with [FastAPI](https://fastapi.tiangolo.com/), [Google Gemini](https://deepmind.google/technologies/gemini/), and [IBM Cloudant](https://www.ibm.com/cloud/cloudant).
