@@ -1,4 +1,5 @@
-fastapi==0.115.12
-uvicorn==0.34.2
-google-genai==1.14.0
-python-dotenv==1.1.0
+fastapi>=0.115.0
+uvicorn>=0.34.0
+google-genai>=1.14.0
+python-dotenv>=1.1.0
+ibmcloudant>=0.9.0

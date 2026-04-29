@@ -11,98 +11,129 @@
 </head>
 <body>
 
-<!-- Sticky Nav -->
-<nav>
-  <div class="nav-content glass">
-    <a href="#" class="logo">
-      <div class="logo-icon">🧬</div>
-      <span>Code Healer</span>
-    </a>
-    <div class="nav-badge">Gemini 2.5 Flash</div>
-  </div>
-</nav>
-
-<!-- Hero -->
-<div class="hero">
-  <h1>Heal your code. <span class="gradient">Instantly.</span></h1>
-  <p>AI-powered code analysis that catches bugs, security issues, and performance problems — then fixes them for you.</p>
-</div>
-
-<!-- Main Editor Card -->
-<div class="container">
-  <div class="card">
-    <div class="editor-header">
-      <div class="editor-label">
-        <span>📝</span>
-        <span>Code Input</span>
-      </div>
-      <div class="editor-controls">
-        <select id="languageSelect" class="lang-select" aria-label="Select language">
-          <option value="auto">Auto-detect</option>
-          <option value="python">Python</option>
-          <option value="javascript">JavaScript</option>
-          <option value="typescript">TypeScript</option>
-          <option value="java">Java</option>
-          <option value="c">C</option>
-          <option value="cpp">C++</option>
-          <option value="csharp">C#</option>
-          <option value="go">Go</option>
-          <option value="rust">Rust</option>
-          <option value="php">PHP</option>
-          <option value="ruby">Ruby</option>
-          <option value="swift">Swift</option>
-          <option value="kotlin">Kotlin</option>
-          <option value="scala">Scala</option>
-          <option value="r">R</option>
-          <option value="dart">Dart</option>
-          <option value="lua">Lua</option>
-          <option value="perl">Perl</option>
-          <option value="haskell">Haskell</option>
-          <option value="elixir">Elixir</option>
-          <option value="sql">SQL</option>
-          <option value="html">HTML</option>
-          <option value="css">CSS</option>
-          <option value="bash">Bash / Shell</option>
-          <option value="powershell">PowerShell</option>
-          <option value="yaml">YAML</option>
-          <option value="json">JSON</option>
-        </select>
-        <span class="char-counter" id="charCount">0 / 10,000</span>
-      </div>
+<!-- History Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">
+      <span>📋</span>
+      <span>History</span>
     </div>
+    <button class="sidebar-close" id="sidebarClose" title="Close sidebar">✕</button>
+  </div>
+  <div class="sidebar-list" id="historyList">
+    <div class="sidebar-empty">
+      <span style="font-size:28px;opacity:0.4">📭</span>
+      <span>No reviews yet</span>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <button class="btn btn-secondary sidebar-clear-btn" id="clearHistoryBtn" type="button">🗑 Clear All</button>
+  </div>
+</aside>
 
-    <div class="drop-zone" id="dropZone">
-      <div class="drop-overlay" id="dropOverlay">
-        <div class="drop-text">
-          <span style="font-size: 40px;">📂</span>
-          <span>Drop your file here</span>
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Main Content Wrapper -->
+<div class="main-content" id="mainContent">
+
+  <!-- Sticky Nav -->
+  <nav>
+    <div class="nav-content glass">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="history-toggle" id="historyToggle" title="Toggle history">☰</button>
+        <a href="#" class="logo">
+          <div class="logo-icon">🧬</div>
+          <span>Code Healer</span>
+        </a>
+      </div>
+      <div class="nav-badge">Gemini 2.5 Flash</div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Heal your code. <span class="gradient">Instantly.</span></h1>
+    <p>AI-powered code analysis that catches bugs, security issues, and performance problems — then fixes them for you.</p>
+  </div>
+
+  <!-- Main Editor Card -->
+  <div class="container">
+    <div class="card">
+      <div class="editor-header">
+        <div class="editor-label">
+          <span>📝</span>
+          <span>Code Input</span>
+        </div>
+        <div class="editor-controls">
+          <select id="languageSelect" class="lang-select" aria-label="Select language">
+            <option value="auto">Auto-detect</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="java">Java</option>
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+            <option value="csharp">C#</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+            <option value="php">PHP</option>
+            <option value="ruby">Ruby</option>
+            <option value="swift">Swift</option>
+            <option value="kotlin">Kotlin</option>
+            <option value="scala">Scala</option>
+            <option value="r">R</option>
+            <option value="dart">Dart</option>
+            <option value="lua">Lua</option>
+            <option value="perl">Perl</option>
+            <option value="haskell">Haskell</option>
+            <option value="elixir">Elixir</option>
+            <option value="sql">SQL</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="bash">Bash / Shell</option>
+            <option value="powershell">PowerShell</option>
+            <option value="yaml">YAML</option>
+            <option value="json">JSON</option>
+          </select>
+          <span class="char-counter" id="charCount">0 / 10,000</span>
         </div>
       </div>
-      <textarea
-        id="code"
-        placeholder="Paste your code here, or drag & drop a file...
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-overlay" id="dropOverlay">
+          <div class="drop-text">
+            <span style="font-size: 40px;">📂</span>
+            <span>Drop your file here</span>
+          </div>
+        </div>
+        <textarea
+          id="code"
+          placeholder="Paste your code here, or drag & drop a file...
 
 Supports: Python, JavaScript, TypeScript, Java, C/C++, Go, Rust, PHP, Ruby, Swift, Kotlin, SQL, and 15+ more languages."
-        spellcheck="false"
-      ></textarea>
-    </div>
+          spellcheck="false"
+        ></textarea>
+      </div>
 
-    <div class="action-bar">
-      <button class="btn btn-primary" id="reviewBtn" type="button">
-        <span id="btnIcon">▶</span>
-        <span id="btnText">Run Review</span>
-      </button>
-      <label class="btn btn-secondary file-upload">
-        ↑ Upload
-        <input type="file" id="fileInput" accept=".py,.js,.ts,.java,.cpp,.c,.go,.rs,.php,.sql,.rb,.swift,.kt,.scala,.r,.dart,.lua,.pl,.hs,.ex,.sh,.ps1,.yml,.yaml,.json,.html,.css,.txt" />
-      </label>
-      <button class="btn btn-secondary" id="clearBtn" type="button">✕ Clear</button>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="reviewBtn" type="button">
+          <span id="btnIcon">▶</span>
+          <span id="btnText">Run Review</span>
+        </button>
+        <label class="btn btn-secondary file-upload">
+          ↑ Upload
+          <input type="file" id="fileInput" accept=".py,.js,.ts,.java,.cpp,.c,.go,.rs,.php,.sql,.rb,.swift,.kt,.scala,.r,.dart,.lua,.pl,.hs,.ex,.sh,.ps1,.yml,.yaml,.json,.html,.css,.txt" />
+        </label>
+        <button class="btn btn-secondary" id="clearBtn" type="button">✕ Clear</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Results -->
-<div class="results" id="resultsSection"></div>
+  <!-- Results -->
+  <div class="results" id="resultsSection"></div>
+
+</div>
 
 </body>
 </html>

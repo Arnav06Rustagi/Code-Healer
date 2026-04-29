@@ -1,6 +1,6 @@
 /**
  * Code Healer — Frontend Logic
- * Handles editor, file upload, drag-drop, API calls, and result rendering
+ * Handles editor, file upload, drag-drop, API calls, result rendering, and history sidebar
  */
 
 // ─── DOM References ─────────────────────────────────────────────────
@@ -15,6 +15,14 @@ const resultsSection = document.getElementById('resultsSection');
 const dropZone = document.getElementById('dropZone');
 const dropOverlay = document.getElementById('dropOverlay');
 const fileInput = document.getElementById('fileInput');
+
+// Sidebar
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const historyToggle = document.getElementById('historyToggle');
+const sidebarClose = document.getElementById('sidebarClose');
+const historyList = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
 // ─── Character Counter ──────────────────────────────────────────────
 codeEl.addEventListener('input', () => {
@@ -79,6 +87,24 @@ clearBtn.addEventListener('click', () => {
   resultsSection.classList.remove('visible');
 });
 
+// ─── Sidebar Toggle ─────────────────────────────────────────────────
+function openSidebar() {
+  sidebar.classList.add('open');
+  sidebarOverlay.classList.add('active');
+}
+
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('active');
+}
+
+historyToggle.addEventListener('click', () => {
+  if (sidebar.classList.contains('open')) closeSidebar();
+  else { loadHistory(); openSidebar(); }
+});
+sidebarClose.addEventListener('click', closeSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
 // ─── Review ─────────────────────────────────────────────────────────
 reviewBtn.addEventListener('click', runReview);
 
@@ -117,6 +143,9 @@ async function runReview() {
 
     const data = await res.json();
     renderResults(data.review);
+
+    // Refresh history sidebar
+    loadHistory();
   } catch (err) {
     resultsSection.innerHTML = `
       <div class="error-card">
@@ -244,7 +273,127 @@ function renderResults(review) {
   }, 150);
 }
 
+// ─── History (Cloudant) ─────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    const data = await res.json();
+    const items = data.items || [];
+
+    if (!items.length) {
+      historyList.innerHTML = `
+        <div class="sidebar-empty">
+          <span style="font-size:28px;opacity:0.4">📭</span>
+          <span>No reviews yet</span>
+        </div>`;
+      return;
+    }
+
+    historyList.innerHTML = items.map(item => {
+      const score = item.score || 0;
+      const cls = score >= 7 ? 'high' : score >= 4 ? 'mid' : 'low';
+      const lang = item.language || 'auto';
+      const preview = item.preview || '';
+      const time = formatTime(item.created_at);
+
+      return `
+        <div class="sidebar-item" data-id="${esc(item._id)}" onclick="loadHistoryItem('${esc(item._id)}')">
+          <div class="sidebar-item-top">
+            <span class="sidebar-lang">${esc(lang)}</span>
+            <span class="sidebar-score ${cls}">${score}/10</span>
+          </div>
+          <div class="sidebar-preview">${esc(preview)}</div>
+          <div class="sidebar-time">${time}</div>
+          <button class="sidebar-delete" onclick="event.stopPropagation(); deleteHistoryItem('${esc(item._id)}')" title="Delete">×</button>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load history:', err);
+    historyList.innerHTML = `
+      <div class="sidebar-empty">
+        <span style="font-size:28px;opacity:0.4">⚠️</span>
+        <span>Could not load history</span>
+      </div>`;
+  }
+}
+
+async function loadHistoryItem(id) {
+  try {
+    const res = await fetch(`/api/history/${id}`);
+    if (!res.ok) throw new Error('Not found');
+    const doc = await res.json();
+
+    // Load code into editor
+    codeEl.value = doc.code || '';
+    codeEl.dispatchEvent(new Event('input'));
+
+    // Set language
+    if (doc.language) {
+      langSelect.value = doc.language;
+    }
+
+    // Render review results
+    if (doc.review) {
+      renderResults(doc.review);
+    }
+
+    // Highlight active item
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    const activeEl = document.querySelector(`.sidebar-item[data-id="${id}"]`);
+    if (activeEl) activeEl.classList.add('active');
+
+    // Close sidebar on mobile
+    if (window.innerWidth <= 768) closeSidebar();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    console.error('Failed to load history item:', err);
+  }
+}
+
+async function deleteHistoryItem(id) {
+  try {
+    await fetch(`/api/history/${id}`, { method: 'DELETE' });
+    loadHistory();
+  } catch (err) {
+    console.error('Failed to delete:', err);
+  }
+}
+
+clearHistoryBtn.addEventListener('click', async () => {
+  if (!confirm('Clear all review history?')) return;
+  try {
+    await fetch('/api/history', { method: 'DELETE' });
+    loadHistory();
+  } catch (err) {
+    console.error('Failed to clear history:', err);
+  }
+});
+
 // ─── Helpers ────────────────────────────────────────────────────────
 function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+function formatTime(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diff = now - d;
+
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
+// ─── Init ───────────────────────────────────────────────────────────
+// Pre-load history count for badge (don't open sidebar)
+loadHistory();
