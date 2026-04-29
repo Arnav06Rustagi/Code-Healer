@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: code-healer
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLOUDANT_URL
+        sync: false
+      - key: CLOUDANT_APIKEY
+        sync: false
+      - key: CLOUDANT_DB
+        value: code_healer_history
+      - key: PYTHON_VERSION
+        value: "3.12"
