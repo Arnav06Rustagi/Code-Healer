@@ -59,6 +59,22 @@ if CLOUDANT_URL and CLOUDANT_APIKEY:
         except Exception:
             pass  # DB already exists
 
+        # Ensure index exists for sorting history by created_at
+        try:
+            from ibmcloudant.cloudant_v1 import IndexDefinition, IndexField
+            index_field = IndexField(created_at="desc")
+            index_definition = IndexDefinition(fields=[index_field])
+            cloudant_client.post_index(
+                db=CLOUDANT_DB,
+                index=index_definition,
+                ddoc="history-index",
+                name="created_at-index",
+                type="json"
+            ).get_result()
+            print(f"[Code Healer] Cloudant index verified: created_at")
+        except Exception as e:
+            print(f"[Code Healer] Cloudant index creation skipped or failed: {e}")
+
         print(f"[Code Healer] Cloudant connected: {CLOUDANT_DB}")
     except Exception as e:
         print(f"[Code Healer] Cloudant init failed: {e}")
@@ -241,14 +257,28 @@ async def get_history():
     if not cloudant_client:
         return {"items": []}
     try:
-        result = cloudant_client.post_find(
-            db=CLOUDANT_DB,
-            selector={"type": "review"},
-            fields=["_id", "_rev", "language", "score", "preview", "summary", "created_at"],
-            sort=[{"created_at": "desc"}],
-            limit=30,
-        ).get_result()
-        return {"items": result.get("docs", [])}
+        # Try fetching with sort (requires index)
+        try:
+            result = cloudant_client.post_find(
+                db=CLOUDANT_DB,
+                selector={"type": "review"},
+                fields=["_id", "_rev", "language", "score", "preview", "summary", "created_at"],
+                sort=[{"created_at": "desc"}],
+                limit=30,
+            ).get_result()
+            return {"items": result.get("docs", [])}
+        except Exception as sort_err:
+            print(f"[Code Healer] Sorted fetch failed, falling back to Python sort: {sort_err}")
+            # Fallback: fetch more docs and sort in Python
+            result = cloudant_client.post_find(
+                db=CLOUDANT_DB,
+                selector={"type": "review"},
+                fields=["_id", "_rev", "language", "score", "preview", "summary", "created_at"],
+                limit=100,
+            ).get_result()
+            docs = result.get("docs", [])
+            docs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+            return {"items": docs[:30]}
     except Exception as e:
         print(f"[Code Healer] History fetch failed: {e}")
         return {"items": []}
